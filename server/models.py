@@ -5,8 +5,8 @@ db = SQLAlchemy()
 class Restaurant(db.Model):
     __tablename__ = 'restaurants'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    address = db.Column(db.String)
+    name = db.Column(db.String, nullable=False)
+    address = db.Column(db.String, nullable=False)
     restaurant_pizzas = db.relationship('RestaurantPizza', backref='restaurant', cascade='all, delete-orphan')
 
     def to_dict(self, only=(), rules=()):
@@ -20,8 +20,8 @@ class Restaurant(db.Model):
 class Pizza(db.Model):
     __tablename__ = 'pizzas'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    ingredients = db.Column(db.String)
+    name = db.Column(db.String, nullable=False)
+    ingredients = db.Column(db.String, nullable=False)
     restaurant_pizzas = db.relationship('RestaurantPizza', backref='pizza', cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -34,9 +34,12 @@ class Pizza(db.Model):
 class RestaurantPizza(db.Model):
     __tablename__ = 'restaurant_pizzas'
     id = db.Column(db.Integer, primary_key=True)
-    price = db.Column(db.Integer)
-    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id'))
-    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'))
+    price = db.Column(db.Integer, nullable=False)
+    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id'), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    
+    pizza = db.relationship('Pizza', backref='restaurant_pizzas')
+    restaurant = db.relationship('Restaurant', backref='restaurant_pizzas')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
