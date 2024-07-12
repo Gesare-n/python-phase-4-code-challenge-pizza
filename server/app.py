@@ -1,29 +1,54 @@
-#!/usr/bin/env python3
-from models import db, Restaurant, RestaurantPizza, Pizza
-from flask_migrate import Migrate
-from flask import Flask, request, make_response
-from flask_restful import Api, Resource
-import os
+from flask_sqlalchemy import SQLAlchemy
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATABASE = os.environ.get("DB_URI", f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}")
+db = SQLAlchemy()
 
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.json.compact = False
+class Restaurant(db.Model):
+    __tablename__ = 'restaurants'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    address = db.Column(db.String)
+    restaurant_pizzas = db.relationship('RestaurantPizza', backref='restaurant', cascade='all, delete-orphan')
 
-migrate = Migrate(app, db)
+    def to_dict(self, only=(), rules=()):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "address": self.address,
+            "restaurant_pizzas": [rp.to_dict(rules=rules) for rp in self.restaurant_pizzas]
+        }
 
-db.init_app(app)
+class Pizza(db.Model):
+    __tablename__ = 'pizzas'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    ingredients = db.Column(db.String)
+    restaurant_pizzas = db.relationship('RestaurantPizza', backref='pizza', cascade='all, delete-orphan')
 
-api = Api(app)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "ingredients": self.ingredients
+        }
 
+class RestaurantPizza(db.Model):
+    __tablename__ = 'restaurant_pizzas'
+    id = db.Column(db.Integer, primary_key=True)
+    price = db.Column(db.Integer)
+    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id'))
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'))
 
-@app.route("/")
-def index():
-    return "<h1>Code challenge</h1>"
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not (1 <= self.price <= 30):
+            raise ValueError("Price must be between 1 and 30")
 
-
-if __name__ == "__main__":
-    app.run(port=5555, debug=True)
+    def to_dict(self, rules=()):
+        return {
+            "id": self.id,
+            "price": self.price,
+            "pizza": self.pizza.to_dict(),
+            "pizza_id": self.pizza_id,
+            "restaurant_id": self.restaurant_id,
+            "restaurant": self.restaurant.to_dict(only=('id', 'name', 'address'))
+        }
